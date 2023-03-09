@@ -16,18 +16,25 @@ defmodule ForhuWeb.AnswerLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="flex flex-col max-w-4xl min-h-screen items-center">
-      <h1 class="text-2xl">Ask Me Anything</h1>
-      <.simple_form :let={f} for={%{}} as={:question} phx-submit="answer_question" class="w-full">
+    <div class="flex flex-col max-w-4xl min-h-screen">
+      <.simple_form
+        :let={f}
+        for={%{}}
+        as={:question}
+        phx-submit="answer_question"
+        class="w-full items-center"
+      >
         <.input
           disabled={@state != :waiting_for_question}
           field={{f, :question}}
           name="question"
           value={@question}
-          type="text"
+          placeholder="Ask me anything!"
+          type="textarea"
         />
         <.button
           type="submit"
+          class="flex items-center"
           disabled={@state != :waiting_for_question}
           phx-disabled-with="Answering..."
         >
@@ -64,6 +71,18 @@ defmodule ForhuWeb.AnswerLive do
     {:noreply, assign(socket, :answer, answer)}
   end
 
+  @impl true
+  def handle_info({:flash_error, message}, socket) do
+    socket =
+      socket
+      |> assign(:state, :waiting_for_question)
+      |> assign(:answer, "")
+      |> assign(:response_task, nil)
+      |> put_flash(:error, message)
+
+    {:noreply, socket}
+  end
+
   def handle_info({ref, answer}, socket) when socket.assigns.response_task.ref == ref do
     socket =
       socket
@@ -77,13 +96,7 @@ defmodule ForhuWeb.AnswerLive do
     {:noreply, socket}
   end
 
-  defp prompt(question) do
-    """
-    Answer the following question.
-    Question: #{question}
-    Answer:
-    """
-  end
+  defp prompt(question), do: question
 
   defp stream_reponse(stream) do
     target = self()
@@ -91,9 +104,18 @@ defmodule ForhuWeb.AnswerLive do
     IO.puts("Starting response task #{inspect(stream)}")
 
     Task.Supervisor.async(Forhu.TaskSupervisor, fn ->
-      for chunk <- stream, into: <<>> do
-        send(target, {:render_response_chunk, chunk})
-        chunk
+      for {chunk, state} <- stream, into: <<>> do
+        case state do
+          :ok ->
+            IO.puts("Sending chunk: #{inspect(chunk)}")
+            send(target, {:render_response_chunk, chunk})
+            chunk
+
+          :error ->
+            IO.puts("Sending error chunk: #{inspect(chunk)}")
+            send(target, {:flash_error, chunk})
+            chunk
+        end
       end
     end)
   end

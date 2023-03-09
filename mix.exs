@@ -34,10 +34,10 @@ defmodule Forhu.MixProject do
     [
       {:hackney, "~> 1.18"},
       {:httpoison, "~> 2.0"},
-      {:phoenix, "~> 1.7.0-rc.3", override: true},
+      {:phoenix, "~> 1.7.1"},
       {:phoenix_html, "~> 3.3"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 0.18.14"},
+      {:phoenix_live_view, "~> 0.18.16"},
       {:heroicons, "~> 0.5"},
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.7.2"},

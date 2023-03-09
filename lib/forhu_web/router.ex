@@ -17,8 +17,7 @@ defmodule ForhuWeb.Router do
   scope "/", ForhuWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
-    live "/answer", AnswerLive
+    live "/", AnswerLive
   end
 
   # Other scopes may use custom stacks.

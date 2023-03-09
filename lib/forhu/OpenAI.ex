@@ -1,9 +1,9 @@
 defmodule Forhu.OpenAI do
   require Logger
 
-  def stream(input) do
-    url = "https://api.openai.com/v1/completions"
-    body = Jason.encode!(body(input, true))
+  def stream(input, stream? \\ true) do
+    url = "https://api.openai.com/v1/chat/completions"
+    body = Jason.encode!(body(input, stream?))
     headers = headers()
 
     Stream.resource(
@@ -23,13 +23,11 @@ defmodule Forhu.OpenAI do
 
   defp handle_async_response(%HTTPoison.AsyncResponse{id: id} = resp) do
     receive do
-      %HTTPoison.AsyncStatus{id: ^id, code: code} ->
-        Logger.info("openai, request, status, #{inspect(code)}")
+      %HTTPoison.AsyncStatus{id: ^id, code: _code} ->
         HTTPoison.stream_next(resp)
         {[], resp}
 
-      %HTTPoison.AsyncHeaders{id: ^id, headers: headers} ->
-        Logger.info("openai,request,headers,#{inspect(headers)}")
+      %HTTPoison.AsyncHeaders{id: ^id, headers: _headers} ->
         HTTPoison.stream_next(resp)
         {[], resp}
 
@@ -55,10 +53,21 @@ defmodule Forhu.OpenAI do
       |> Enum.reject(&(&1 == ""))
       |> Enum.reduce({"", false}, fn trimmed, {chunk, is_done?} ->
         case Jason.decode(trimmed) do
-          {:ok, %{"choices" => [%{"text" => text}]}} ->
-            {chunk <> text, is_done? or false}
+          {:ok, %{"choices" => [choice]}} ->
+            text =
+              case choice do
+                %{"finish_reason" => nil, "delta" => %{"role" => "assistant"}} -> ""
+                %{"finish_reason" => "stop"} -> ""
+                %{"finish_reason" => nil} -> choice["delta"]["content"]
+                _ -> ""
+              end
+
+            chunk = chunk <> text
+            IO.inspect("text: #{chunk}")
+            {chunk, is_done? or false}
 
           {:error, %{data: "[DONE]"}} ->
+            IO.inspect("done: #{chunk}")
             {chunk, is_done? or true}
         end
       end)
@@ -78,11 +87,11 @@ defmodule Forhu.OpenAI do
     ]
   end
 
-  defp body(prompt, streaming?) do
+  defp body(prompt, stream?) do
     %{
-      model: "text-davinci-003",
-      prompt: prompt,
-      stream: streaming?,
+      model: "gpt-3.5-turbo",
+      stream: stream?,
+      messages: [%{role: "user", content: prompt}],
       max_tokens: 1024
     }
   end
