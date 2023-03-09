@@ -1,7 +1,6 @@
 defmodule ForhuWeb.AnswerLive do
   alias Forhu.OpenAI
   use ForhuWeb, :live_view
-  import Phoenix.HTML.Format, only: [text_to_html: 1]
 
   @impl true
   def mount(_params, _session, socket) do
@@ -73,11 +72,13 @@ defmodule ForhuWeb.AnswerLive do
     # IO.puts("Got chunk: #{chunk}")
     answer = socket.assigns.answer <> chunk
 
+    mk = Earmark.as_html!(answer)
     # todo markdown to html
+    # https://hexdocs.pm/phoenix_webcomponent/Phoenix.WebComponent.Markdown.html
     socket =
       socket
       |> assign(:answer, answer)
-      |> assign(:render_answer, answer |> text_to_html |> safe_to_string())
+      |> assign(:render_answer, mk)
 
     {:noreply, socket}
   end
