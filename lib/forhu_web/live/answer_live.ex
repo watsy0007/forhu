@@ -59,6 +59,7 @@ defmodule ForhuWeb.AnswerLive do
       socket
       |> assign(:question, question)
       |> assign(:state, :answered)
+      |> assign(:answer, "")
       |> assign(:response_task, stream_reponse(stream))
 
     {:noreply, socket}
@@ -66,7 +67,7 @@ defmodule ForhuWeb.AnswerLive do
 
   @impl true
   def handle_info({:render_response_chunk, chunk}, socket) do
-    IO.puts("Got chunk: #{chunk}")
+    # IO.puts("Got chunk: #{chunk}")
     answer = socket.assigns.answer <> chunk
     {:noreply, assign(socket, :answer, answer)}
   end
@@ -104,18 +105,9 @@ defmodule ForhuWeb.AnswerLive do
     IO.puts("Starting response task #{inspect(stream)}")
 
     Task.Supervisor.async(Forhu.TaskSupervisor, fn ->
-      for {chunk, state} <- stream, into: <<>> do
-        case state do
-          :ok ->
-            IO.puts("Sending chunk: #{inspect(chunk)}")
-            send(target, {:render_response_chunk, chunk})
-            chunk
-
-          :error ->
-            IO.puts("Sending error chunk: #{inspect(chunk)}")
-            send(target, {:flash_error, chunk})
-            chunk
-        end
+      for chunk <- stream, into: <<>> do
+        send(target, {:render_response_chunk, chunk})
+        chunk
       end
     end)
   end
