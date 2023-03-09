@@ -52,6 +52,8 @@ defmodule Forhu.OpenAI do
       |> Enum.map(&String.trim/1)
       |> Enum.reject(&(&1 == ""))
       |> Enum.reduce({"", false}, fn trimmed, {chunk, is_done?} ->
+        IO.puts("trimmed: #{inspect(trimmed)} -> #{inspect(chunk)}")
+
         case Jason.decode(trimmed) do
           {:ok, %{"choices" => [choice]}} ->
             text =
@@ -63,7 +65,7 @@ defmodule Forhu.OpenAI do
               end
 
             chunk = chunk <> text
-            IO.inspect("text: #{chunk}")
+            IO.puts("text: #{chunk}")
             {chunk, is_done? or false}
 
           {:error, %{data: "[DONE]"}} ->
