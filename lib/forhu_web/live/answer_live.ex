@@ -1,6 +1,7 @@
 defmodule ForhuWeb.AnswerLive do
   alias Forhu.OpenAI
   use ForhuWeb, :live_view
+  import Phoenix.HTML.Format, only: [text_to_html: 1]
 
   @impl true
   def mount(_params, _session, socket) do
@@ -8,6 +9,7 @@ defmodule ForhuWeb.AnswerLive do
       socket
       |> assign(:question, "")
       |> assign(:answer, "")
+      |> assign(:render_answer, "")
       |> assign(:state, :waiting_for_question)
 
     {:ok, socket}
@@ -43,7 +45,7 @@ defmodule ForhuWeb.AnswerLive do
       </.simple_form>
       <div class="mt-4 text-md">
         <p><span class="font-semibold">Question:</span> <%= @question %></p>
-        <p><span class="font-semibold">Answer:</span><%= @answer %></p>
+        <p><span class="font-semibold">Answer:</span><%= raw(@render_answer) %></p>
       </div>
     </div>
     """
@@ -60,6 +62,7 @@ defmodule ForhuWeb.AnswerLive do
       |> assign(:question, question)
       |> assign(:state, :answered)
       |> assign(:answer, "")
+      |> assign(:render_answer, "")
       |> assign(:response_task, stream_reponse(stream))
 
     {:noreply, socket}
@@ -69,7 +72,14 @@ defmodule ForhuWeb.AnswerLive do
   def handle_info({:render_response_chunk, chunk}, socket) do
     # IO.puts("Got chunk: #{chunk}")
     answer = socket.assigns.answer <> chunk
-    {:noreply, assign(socket, :answer, answer)}
+
+    # todo markdown to html
+    socket =
+      socket
+      |> assign(:answer, answer)
+      |> assign(:render_answer, answer |> text_to_html |> safe_to_string())
+
+    {:noreply, socket}
   end
 
   @impl true
